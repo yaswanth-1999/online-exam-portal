@@ -1,13 +1,20 @@
-FROM node:13-alpine
-
+# Build stage
+FROM node:18-alpine AS build
+ 
 WORKDIR /usr/frontend
-
-COPY . .
-RUN rm -rf node_modules/ package-lock.json
+ 
+COPY package*.json ./
 RUN npm install
-
+COPY . .
 RUN npm run build
-
-
-CMD ["sh", "-c", "npm start"]
-
+ 
+# Runtime stage
+FROM node:18-alpine
+ 
+WORKDIR /usr/frontend
+ 
+COPY --from=build /usr/frontend/build ./build
+RUN npm install -g serve
+ 
+EXPOSE 3000
+CMD ["serve", "-s", "build"]
