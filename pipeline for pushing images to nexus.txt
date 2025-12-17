@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+
+    environment {
+        NEXUS_REGISTRY = "65.0.132.95:8082"
+        BACKEND_IMAGE  = "nodejs-backend:11"
+        FRONTEND_IMAGE = "nodejs-frontend:11"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'dev',
+                    url: 'https://github.com/yaswanth-1999/online-exam-portal.git'
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                sh '''
+                  docker build -t ${BACKEND_IMAGE} backend
+                  docker build -t ${FRONTEND_IMAGE} frontend
+                '''
+            }
+        }
+
+        stage('Tag Images for Nexus') {
+            steps {
+                sh '''
+                  docker tag ${BACKEND_IMAGE}  ${NEXUS_REGISTRY}/${BACKEND_IMAGE}
+                  docker tag ${FRONTEND_IMAGE} ${NEXUS_REGISTRY}/${FRONTEND_IMAGE}
+                '''
+            }
+        }
+
+        stage('Push Images to Nexus') {
+            steps {
+                withDockerRegistry(
+                    credentialsId: 'nexus-docker-creds',
+                    url: "http://${NEXUS_REGISTRY}"
+                ) {
+                    sh '''
+                      docker push ${NEXUS_REGISTRY}/${BACKEND_IMAGE}
+                      docker push ${NEXUS_REGISTRY}/${FRONTEND_IMAGE}
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Docker images built and pushed to Nexus successfully'
+        }
+        failure {
+            echo '❌ Docker image build or push failed'
+        }
+        always {
+            sh 'docker logout http://65.0.132.95:8082 || true'
+        }
+    }
+}
