@@ -1,0 +1,67 @@
+pipeline {
+    agent any
+
+    environment {
+        BACKEND_IMAGE  = "nodejs-backend"
+        FRONTEND_IMAGE = "nodejs-frontend"
+        IMAGE_TAG      = "${BUILD_NUMBER}"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'dev',
+                    url: 'https://github.com/yaswanth-1999/online-exam-portal.git'
+            }
+        }
+
+        stage('Build Backend Docker Image') {
+            steps {
+                script {
+                    echo "Building Backend Docker Image"
+                    def backendImage = docker.build(
+                        "${BACKEND_IMAGE}:${IMAGE_TAG}",
+                        "backend"
+                    )
+
+                    // Add additional tag
+                    backendImage.tag("latest")
+                }
+            }
+        }
+
+        stage('Build Frontend Docker Image') {
+            steps {
+                script {
+                    echo "Building Frontend Docker Image"
+                    def frontendImage = docker.build(
+                        "${FRONTEND_IMAGE}:${IMAGE_TAG}",
+                        "frontend"
+                    )
+
+                    // Add additional tag
+                    frontendImage.tag("latest")
+                }
+            }
+        }
+
+        stage('List Docker Images') {
+            steps {
+                sh '''
+                  echo "Docker images available on Jenkins server:"
+                  docker images
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Pipeline completed successfully"
+        }
+        failure {
+            echo "❌ Pipeline failed. Check console logs."
+        }
+    }
+}
